@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mantar Pano</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="view"><div id="world">
+  <svg id="strings" width="4000" height="3000"></svg>
+  <canvas id="draw" width="4000" height="3000"></canvas>
+</div></div>
+
+<p id="hint"></p>
+<div id="toast" hidden></div>
+
+<div id="bar" data-tab="" data-save="idle">
+  <div class="tabs" role="group" aria-label="Araç bölümleri">
+    <button data-tab="tools" aria-expanded="false">Çiz</button><button data-tab="add" aria-expanded="false">Ekle</button><button data-tab="card" aria-expanded="false" hidden title="Seçili kartın ayarları">Kart</button><button data-tab="file" aria-expanded="false">Dosya</button>
+    <span id="modeNow" title="Etkin araç"></span>
+  </div>
+
+  <div class="pane" data-tab="tools">
+    <div class="grp" id="modes">
+      <button data-m="select" class="on" title="Seç / taşı (V)">Seç</button>
+      <button data-m="thread" title="İki karta sırayla dokun (T)">İp</button>
+      <button data-m="pen" title="Kalem (P)">Kalem</button>
+      <button data-m="marker" title="Kalın işaretleyici (M)">İşaretleyici</button>
+      <button data-m="eraser" title="Silgi (E)">Silgi</button>
+      <button data-m="stamp" title="Mühür (S): karta veya panoya dokun">Mühür</button>
+      <input id="stampType" list="stamps" value="ÖNEMLİ" size="11" title="Mühür yazısı: istediğini yaz ya da listeden seç"><datalist id="stamps"><option value="ÖNEMLİ"><option value="TEKRAR ET"><option value="SINAV"><option value="DOĞRU ✔"><option value="YANLIŞ ✘"><option value="GİZLİ"><option value="ŞÜPHELİ"></datalist>
+    </div>
+    <input type="color" id="color" value="#c1121f" title="İp, kalem ve işaretleyici rengi">
+    <label class="rng" title="Kalem kalınlığı (işaretleyici ve silgi buna göre kalınlaşır)">Kalınlık <input type="range" id="size" min="1" max="12" value="3"></label>
+    <div class="grp">
+      <button id="lensBtn" title="Parmağın / imlecin altını büyütür">Büyüteç</button>
+      <button id="fitBtn" title="Tüm kartları ekrana sığdır">⤢ Hepsini göster</button>
+      <button id="legendBtn" title="Sınıf listesini aç/kapat">Sınıflar</button>
+      <button id="helpBtn" title="Nasıl kullanılır?">? Yardım</button>
+    </div>
+  </div>
+
+  <div class="pane" data-tab="add">
+    <div class="grp">
+      <button id="addPolaroid">+ Fotoğraf</button>
+      <button id="addNews">+ Kupür</button>
+      <button id="addNews2" title="Yan yana iki kolon: her kolon kendi içinde aşağı doğru uzar">+ Kupür (2 kolon)</button>
+      <button id="addPostit" title="Küçük sarı yapışkan not">+ Post-it</button>
+      <button id="addNote">+ Not</button>
+      <button id="addDoc">+ Kâğıt</button>
+      <button id="addTl">+ Zaman çizelgesi</button>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+  </div>
+
+  <div class="pane" data-tab="card">
+    <div class="grp">
+      <input id="cat" list="cats" placeholder="Etiket yaz…" size="11" title="Seçili kartın etiketi: istediğini yaz" disabled><datalist id="cats"><option value="Önemli"><option value="Fikir"><option value="Soru"><option value="Örnek"><option value="Tarih"><option value="Diğer"></datalist><input type="color" id="catColor" title="Etiket rengi" disabled>
+      <button id="smaller" title="Küçült (-)">−</button><button id="bigger" title="Büyüt (+)">+</button>
+    </div>
+    <label class="rng" title="Seçili kartın açısı (serbest)">Açı <input type="range" id="rot" min="-180" max="180" value="0" disabled></label><button id="rot0" title="Açıyı sıfırla">↺</button>
+    <label class="rng" title="Seçili fotoğrafın parlaklığı">Parlaklık <input type="range" id="bright" min="30" max="200" value="100" disabled></label>
+    <div class="grp">
+      <button id="front" title="Öne getir">Öne</button><button id="back" title="Arkaya gönder">Arkaya</button><button id="dup" title="Ctrl+D">Çoğalt</button><button id="del" class="danger">Seçileni sil</button>
+    </div>
+  </div>
+
+  <div class="pane" data-tab="file">
+    <small id="saveState" role="status" aria-live="polite">Otomatik kayıt açık</small>
+    <div class="grp">
+      <input id="search" type="search" placeholder="Kartlarda ara (Ctrl+F)" aria-label="Kartlarda ara"><small id="searchCount" aria-live="polite"></small><button id="exportSelected" title="Seçili kartı PNG olarak indir">Seçili kartı indir</button><button id="clear" class="danger">Çizimi sil</button>
+      <button id="saveJson" title="Panonu dosya olarak yedekle">Kaydet</button><button id="openJson" title="Yedek dosyasını aç">Aç</button><input type="file" id="jsonFile" accept=".json" hidden>
+    </div>
+    <div class="grp">
+      <select id="fmt" title="Çıktı türü ve kalitesi">
+        <option value="png1">Resim (PNG) · Normal</option>
+        <option value="png2" selected>Resim (PNG) · Yüksek</option>
+        <option value="png3">Resim (PNG) · Çok yüksek</option>
+        <option value="A4">Yazıcı: A4 (PDF)</option>
+        <option value="A3">Yazıcı: A3 (PDF)</option>
+        <option value="POSTER">Yazıcı: Poster (PDF)</option>
+      </select>
+      <select id="split" title="Panoyu kaç parçaya bölüp indireyim">
+        <option value="1">Tek parça</option>
+        <option value="2">4 parçaya böl (2×2)</option>
+        <option value="3">9 parçaya böl (3×3)</option>
+      </select>
+      <label class="rng" title="Boş kenarları kırp, sayfayı doldur"><input type="checkbox" id="fit" checked> Dolu alana sığdır</label>
+      <button id="png" class="main">İndir</button>
+    </div>
+    <small id="expInfo"></small>
+  </div>
+</div>
+
+<div id="legend"></div>
+<div id="lens" hidden><div id="lw"></div></div>
+
+<div id="help" hidden>
+  <div class="panel">
+    <h2>Mantar Pano nasıl kullanılır?</h2>
+    <h3>Gezinme</h3>
+    <p><b>Bilgisayar:</b> tekerlekle yakınlaştır, boş yeri sürükleyerek gez.<br><b>Telefon:</b> iki parmakla yakınlaştır ve kaydır, tek parmakla boş yeri sürükle. Kaybolduysan <b>⤢ Hepsini göster</b>.</p>
+    <h3>Kart ekleme ve düzenleme</h3>
+    <p><b>＋ Ekle</b> sekmesinden fotoğraf, kupür (1 ya da 2 kolonlu), not, küçük sarı post-it, kâğıt ya da zaman çizelgesi ekle. Post-it kartın üstüne bırakılınca <b>yapışır</b> ve kartla birlikte taşınır, döner, büyür; üstteki koyu şeritten ya da ✥ tutamacından tutup çekersen kopar. Yazıya dokunup değiştir. Kartı seçince köşelerde tutamaçlar çıkar: <b>✕</b> sil · <b>sarı nokta</b> boyut · <b>↻</b> serbest açı · <b>✥</b> taşı. <b>Kart</b> sekmesinde etiket, açı ve fotoğraf parlaklığı var.</p>
+    <h3>İp, çizim, mühür</h3>
+    <p><b>İp</b> modunda sırayla iki karta dokun; ipe dokunup etiket yaz, etiketi sürükleyerek kaydır. <b>Kalem / İşaretleyici / Silgi</b> ile pano üzerine çiz. <b>Mühür</b> modunda kutuya yazdığın yazıyı karta ya da panoya bas.</p>
+    <h3>Kısayollar ve ekleme</h3><p><b>Ctrl+Z / Ctrl+Y:</b> geri al / yinele · <b>Ctrl+D:</b> çoğalt · <b>Ctrl+F:</b> ara · <b>Oklar:</b> kartı 1 px, Shift+ok 10 px taşı. Kartları hizalamak için 8 px yakınlıkta otomatik yakalama olur; Alt basılıyken kapatılır. Dosyaları doğrudan panoya sürükleyip bırakabilirsin. Seçili kartı ayrı PNG indirebilirsin.</p><h3>Kaydetme</h3>
+    <p>Pano bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak ya da yedek için <b>Kaydet</b> düğmesiyle (Dosya paneli) dosya indir, <b>Aç</b> ile geri yükle.</p>
+    <h3>Çıktı alma</h3>
+    <p><b>Resim (PNG):</b> paylaşmak için. Kalite arttıkça resim daha net ama dosya daha büyük olur (çözünürlük piksel yani resmi oluşturan nokta sayısıdır; 1 piksel ekrandaki tek bir noktadır).<br><b>Yazıcı (PDF):</b> kâğıda basmak için. <b>4 ya da 9 parçaya böl</b> dersen pano büyük çıkar: her parçayı ayrı A4'e bas, kenarlarını hizalayıp yan yana yapıştır.</p>
+    <button data-close="1" class="main">Anladım</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

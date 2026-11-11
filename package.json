@@ -1,0 +1,8 @@
+{
+  "name": "mantar-pano",
+  "private": true,
+  "type": "module",
+  "description": "Uygulamanın kendisi derleme gerektirmez; bu dosya yalnızca testleri çalıştırmak içindir.",
+  "scripts": { "test": "node --test \"tests/*.test.js\"" },
+  "devDependencies": { "jsdom": "^26.0.0" }
+}
