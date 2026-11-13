@@ -17,7 +17,7 @@
 
 <div id="bar" data-tab="" data-save="idle">
   <div class="tabs" role="group" aria-label="Araç bölümleri">
-    <button data-tab="tools" aria-expanded="false">Çiz</button><button data-tab="add" aria-expanded="false">Ekle</button><button data-tab="card" aria-expanded="false" hidden title="Seçili kartın ayarları">Kart</button><button data-tab="file" aria-expanded="false">Dosya</button>
+    <button data-tab="tools" aria-expanded="false">Çiz</button><button data-tab="add" aria-expanded="false">Ekle</button><button data-tab="card" aria-expanded="false" hidden title="Seçili kartın ayarları">Kart</button><button data-tab="file" aria-expanded="false">Dosya</button><button id="premBtn" title="Pro ve Sınırsız özellikler, kod girişi">✦ Pro</button>
     <span id="modeNow" title="Etkin araç"></span>
     <small id="saveState" role="status" aria-live="polite" title="Otomatik kayıt durumu">Kayıt açık</small>
   </div>
@@ -38,6 +38,7 @@
       <button id="lensBtn" title="Parmağın / imlecin altını büyütür">Büyüteç</button>
       <button id="fitBtn" title="Tüm kartları ekrana sığdır">⤢ Hepsini göster</button>
       <button id="legendBtn" title="Sınıf listesini aç/kapat">Sınıflar</button>
+      <button id="undoBtn" title="Geri al (Ctrl+Z)">↶ Geri al</button><button id="redoBtn" title="Yinele (Ctrl+Y)">↷ Yinele</button>
       <button id="helpBtn" title="Nasıl kullanılır?">? Yardım</button>
     </div>
   </div>
@@ -51,6 +52,9 @@
       <button id="addNote">+ Not</button>
       <button id="addDoc">+ Kâğıt</button>
       <button id="addTl">+ Zaman çizelgesi</button>
+      <button id="addCheck" class="pro" title="Tıklanabilir yapılacaklar listesi (Pro)">+ Yapılacaklar ✦</button>
+      <button id="addTape" class="pro" title="Dekoratif washi bant (Pro)">+ Bant ✦</button>
+      <button id="addTimer" class="pro" title="Pomodoro / odak zamanlayıcı (Sınırsız)">+ Zamanlayıcı ✦∞</button>
       <input type="file" id="file" accept="image/*" hidden>
     </div>
   </div>
@@ -60,7 +64,7 @@
       <input id="cat" list="cats" placeholder="Etiket yaz…" size="11" title="Seçili kartın etiketi: istediğini yaz" disabled><datalist id="cats"><option value="Önemli"><option value="Fikir"><option value="Soru"><option value="Örnek"><option value="Tarih"><option value="Diğer"></datalist><input type="color" id="catColor" title="Etiket rengi" disabled>
       <button id="smaller" title="Küçült (-)">−</button><button id="bigger" title="Büyüt (+)">+</button>
     </div>
-    <label class="rng" title="Seçili kartın açısı (serbest)">Açı <input type="range" id="rot" min="-180" max="180" value="0" disabled></label><button id="rot0" title="Açıyı sıfırla">↺</button>
+    <label class="rng" title="Seçili kartın açısı (serbest)">Açı <input type="range" id="rot" min="-180" max="180" value="0" disabled></label><button id="rot0" title="Açıyı sıfırla">↺</button><button id="lockBtn" class="pro" title="Kartı kilitle: taşınmaz, döndürülmez, silinmez (Pro)" disabled>🔒 Kilitle</button>
     <label class="rng" title="Seçili fotoğrafın parlaklığı">Parlaklık <input type="range" id="bright" min="30" max="200" value="100" disabled></label>
     <div class="grp">
       <button id="front" title="Öne getir">Öne</button><button id="back" title="Arkaya gönder">Arkaya</button><button id="dup" title="Ctrl+D">Çoğalt</button><button id="del" class="danger">Seçileni sil</button>
@@ -93,6 +97,7 @@
   </div>
 </div>
 
+<div id="lamp" hidden></div>
 <div id="legend"></div>
 <div id="lens" hidden><div id="lw"></div></div>
 
@@ -105,11 +110,41 @@
     <p><b>＋ Ekle</b> sekmesinden fotoğraf, kupür (1 ya da 2 kolonlu), not, küçük sarı post-it, kâğıt ya da zaman çizelgesi ekle. Post-it kartın üstüne bırakılınca <b>yapışır</b> ve kartla birlikte taşınır, döner, büyür; üstteki koyu şeritten ya da ✥ tutamacından tutup çekersen kopar. Yazıya dokunup değiştir. Kartı seçince köşelerde tutamaçlar çıkar: <b>✕</b> sil · <b>sarı nokta</b> boyut · <b>↻</b> serbest açı · <b>✥</b> taşı. <b>Kart</b> sekmesinde etiket, açı ve fotoğraf parlaklığı var.</p>
     <h3>İp, çizim, mühür</h3>
     <p><b>İp</b> modunda sırayla iki karta dokun; ipe dokunup etiket yaz, etiketi sürükleyerek kaydır. <b>Kalem / İşaretleyici / Silgi</b> ile pano üzerine çiz. <b>Mühür</b> modunda kutuya yazdığın yazıyı karta ya da panoya bas.</p>
-    <h3>Kısayollar ve ekleme</h3><p><b>Ctrl+Z / Ctrl+Y:</b> geri al / yinele · <b>Ctrl+D:</b> çoğalt · <b>Ctrl+F:</b> ara · <b>Oklar:</b> kartı 1 px, Shift+ok 10 px taşı. Kartları hizalamak için 8 px yakınlıkta otomatik yakalama olur; Alt basılıyken kapatılır. Dosyaları doğrudan panoya sürükleyip bırakabilirsin. Seçili kartı ayrı PNG indirebilirsin.</p><h3>Kaydetme</h3>
+    <h3>Kısayollar ve ekleme</h3><p><b>Ctrl+Z / Ctrl+Y:</b> geri al / yinele · <b>Ctrl+D:</b> çoğalt · <b>Ctrl+F:</b> ara · <b>Oklar:</b> kartı 1 px, Shift+ok 10 px taşı. Kartları hizalamak için 8 px yakınlıkta otomatik yakalama olur; Alt basılıyken kapatılır. Dosyaları doğrudan panoya sürükleyip bırakabilirsin. Seçili kartı ayrı PNG indirebilirsin.</p><h3>Premium</h3>
+    <p><b>✦ Pro</b> sekmesinden Mikro-Klima'dan aldığın kodu gir: temalar, raptiyeler, yeni ip stilleri, yapılacaklar kartı, kart kilidi, ek panolar ve şablonlar açılır. Mevcut tüm özellikler ücretsiz kalır.</p><h3>Kaydetme</h3>
     <p>Pano bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak ya da yedek için <b>Kaydet</b> düğmesiyle (Dosya paneli) dosya indir, <b>Aç</b> ile geri yükle.</p>
     <h3>Çıktı alma</h3>
     <p><b>Resim (PNG):</b> paylaşmak için. Kalite arttıkça resim daha net ama dosya daha büyük olur (çözünürlük piksel yani resmi oluşturan nokta sayısıdır; 1 piksel ekrandaki tek bir noktadır).<br><b>Yazıcı (PDF):</b> kâğıda basmak için. <b>4 ya da 9 parçaya böl</b> dersen pano büyük çıkar: her parçayı ayrı A4'e bas, kenarlarını hizalayıp yan yana yapıştır.</p>
     <button data-close="1" class="main">Anladım</button>
+  </div>
+</div>
+
+<div id="prem" hidden>
+  <div class="panel" role="dialog" aria-label="Mantar Pano Premium">
+    <button class="pclose" data-close="1" aria-label="Kapat">✕</button>
+    <h2>✦ Mantar Pano Premium</h2>
+    <p id="premStatus" class="pstat"></p>
+    <div class="plans">
+      <div class="plan" data-p="free"><h3>Ücretsiz</h3><ul><li>Şu anki tüm özellikler: kartlar, ip, çizim, mühür, dışa aktarma</li><li>1 pano</li><li>30 adım geri alma</li></ul></div>
+      <div class="plan" data-p="pro"><h3>Pro <small>120 💎 · 7 gün</small></h3><ul><li>5 yeni pano teması (renk + doku)</li><li>5 raptiye stili</li><li>Halat, kesik, neon ip</li><li>Yapılacaklar kartı ve washi bant</li><li>Kart kilidi</li><li>3 hazır şablon</li><li>3 pano · 60 adım geri alma</li></ul></div>
+      <div class="plan" data-p="unlimited"><h3>Sınırsız <small>250 💎 · 7 gün</small></h3><ul><li>Pro'nun hepsi</li><li>Sınırsız pano</li><li>Bordo kadife ve Galaksi temaları</li><li>Altın tel ip</li><li>Akıllı Diz: kartları etikete göre düzenler</li><li>Odak zamanlayıcı kartı</li><li>Masa lambası ışığı</li><li>100 adım geri alma</li></ul></div>
+    </div>
+    <h3>Kodun var mı?</h3>
+    <div class="prow"><input id="codeIn" placeholder="Kodu buraya yapıştır" autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="codeBtn" class="pbtn main">Etkinleştir</button></div>
+    <small id="codeMsg" role="status"></small>
+    <small>Kod, Mikro-Klima Kontrol Merkezi → Mağaza'dan kristalle alınır; bir hafta geçerlidir. <a id="storeLink" href="#" target="_blank" rel="noopener" hidden>Mağazaya git ›</a></small>
+    <h3>Pano görünümü</h3>
+    <h4>Tema (renk ve doku)</h4><div id="chipTheme" class="chips"></div>
+    <h4>Raptiye</h4><div id="chipPin" class="chips"></div>
+    <h4>Yeni iplerin stili</h4><div id="chipThread" class="chips"></div>
+    <label class="lampl"><input type="checkbox" id="lampChk"> Masa lambası ışığı <small>(Sınırsız)</small></label>
+    <h3>Panolarım</h3>
+    <div class="prow"><select id="boardSel"></select><button id="boardAdd" class="pbtn">＋ Yeni</button><button id="boardRen" class="pbtn">Ad</button><button id="boardDel" class="pbtn danger">Sil</button></div>
+    <small id="boardInfo"></small>
+    <h3>Araçlar</h3>
+    <div class="prow wrap"><button id="smartBtn" class="pbtn">✦∞ Akıllı Diz</button><button class="pbtn" data-tpl="study">✦ Şablon: Sınav haftası</button><button class="pbtn" data-tpl="kanban">✦ Şablon: Proje panosu</button><button class="pbtn" data-tpl="case">✦ Şablon: Vaka dosyası</button></div>
+    <p class="pnote">Süre dolunca hiçbir şey silinmez: temalar, ek panolar ve kilitli kartlar saklanır, yeni kod girince geri gelir.</p>
+    <button data-close="1" class="pbtn main">Kapat</button>
   </div>
 </div>
 

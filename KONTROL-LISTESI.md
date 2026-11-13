@@ -42,3 +42,15 @@ Yayından önce: çalışan sürümün etiketini/kopyasını al (`git tag` ya da
 
 ## Mobil
 - [ ] İki parmakla yakınlaştırma/kaydırma; alt sekmeli araç çubuğu; kart seçip düzenleme.
+
+## Premium (premium.js / ✦ Pro sekmesi / yeni kartlar)
+- [ ] `config.js → API_BASE` doğru; yanlış kod → Türkçe hata, doğru Pro kodu → "Pro aktif · 7 gün kaldı", `✦ Pro` yerine Sınırsız'da `✦ ∞`.
+- [ ] Kilitli öğeye (🔒) basınca ilgili paket vurgulanıyor, uygulama bozulmuyor.
+- [ ] Tema/raptiye değiştir → yenile → aynı; Geri al (↶) temayı da geri alıyor; pano PNG/PDF çıktısında tema görünüyor.
+- [ ] Yapılacaklar: kutucuk işaretle (sayaç değişir), Enter yeni madde, boş maddede Backspace siler; yenile → durum aynı.
+- [ ] Zamanlayıcı: ▶/⏸/↺, süreye basınca 25/5/15/45/60 dk; çalışırken yenile → devam eder; bitince bildirim.
+- [ ] Kart kilidi: kilitli kart taşınmıyor/döndürülmüyor/silinmiyor; kilidi açınca normal.
+- [ ] Panolar: yeni pano → tema devralınır, ana panoya dönünce kartlar yerinde; silme yalnızca ana dışında.
+- [ ] Akıllı Diz: etikete göre sütunlar; ↶ ile geri alınıyor; kilitli kartlara dokunmuyor.
+- [ ] **Süre bitişi:** `localStorage.setItem('mantar-ent', JSON.stringify({plan:'pro',exp:Date.now()-1000}))` + yenile → görünüm klasiğe döner, hiçbir kart/pano silinmez, ek pano 🔒.
+- [ ] İnternet yokken: kayıtlı premium süresince çalışıyor; yeni kod girişi "Sunucuya ulaşılamadı" diyor.

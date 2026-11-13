@@ -14,9 +14,9 @@ function makeBoard(oldHtml = '<div class="card" id="old1">A</div><div class="car
   const dom = new JSDOM(`<div id="world">${oldHtml}</div>`), { document, DOMParser, Event, Image } = dom.window, world = document.getElementById('world');
   const items = () => [...world.querySelectorAll(':scope > .card, :scope > .stamp, :scope > .tl')];
   const noop = () => {}, ctx = { clearRect: noop }, cv = { width: 1, height: 1 }, $ = () => ({ dispatchEvent: noop });
-  const factory = new Function('items', 'world', 'document', 'DOMParser', 'addX', 'ensure', 'ctx', 'cv', 'drawThreads', 'legend', '$', 'Event', 'Image', 'syncCat',
+  const factory = new Function('items', 'world', 'document', 'DOMParser', 'addX', 'ensure', 'ctx', 'cv', 'drawThreads', 'legend', '$', 'Event', 'Image', 'syncCat', 'applySettings', 'afterRestore', 'sanitizeThreadStyle',
     `let threads=[],restoreId=0,canvasBumped=0,drawURL=null,drawDirty=false,sel=null,zTop=1;\n${restoreSrc}\nreturn {restore,getThreads:()=>threads,getDraw:()=>drawURL};`);
-  const api = factory(items, world, document, DOMParser, noop, noop, ctx, cv, noop, noop, $, Event, Image, noop);
+  const api = factory(items, world, document, DOMParser, noop, noop, ctx, cv, noop, noop, $, Event, Image, noop, noop, noop, x => (['classic','rope','dashed','neon','gold'].includes(x) ? x : 'classic'));
   return { ...api, items, ids: () => items().map(e => e.id || e.textContent) };
 }
 const card = (t = 'X') => `<div class="card">${t}</div>`;

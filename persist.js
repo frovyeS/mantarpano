@@ -6,3 +6,4 @@ export async function readBoard(key){let idb=null,ls=null;try{const db=await ope
   try{ls=JSON.parse(localStorage.getItem(key));}catch(_){}
   // İki kaynak da varsa daha yeni kaydedilen kazanır (IndexedDB yazması başarısız olduysa localStorage yedeği daha yeni olabilir).
   return idb&&ls?((ls.savedAt||0)>(idb.savedAt||0)?ls:idb):(idb||ls||null);}
+export async function deleteBoard(key){try{localStorage.removeItem(key);}catch(_){}try{const db=await openDB();await new Promise((resolve,reject)=>{const tx=db.transaction('boards','readwrite');tx.objectStore('boards').delete(key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('abort'));});}catch(_){}}
