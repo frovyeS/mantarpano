@@ -1,14 +1,42 @@
 import { CONFIG } from './config.js';
-import { cardPin, pointOnQuadratic } from './geometry.js';
+import { cardPin, pointOnQuadratic, a4Metrics } from './geometry.js';
 import { readBoard, persistBoard, deleteBoard } from './persist.js';
 import { PLANS, THEMES, PINS, THREAD_STYLES, sanitizeThreadStyle, sanitizeSettings, createEntitlements, timeLeftText, loadBoards, saveBoards, newBoard, boardUsable, cleanName, rank } from './premium.js';
 'use strict';
 const $ = s => document.querySelector(s);
 const view = $('#view'), world = $('#world'), svg = $('#strings'), cv = $('#draw'), ctx = cv.getContext('2d');
 const NS = 'http://www.w3.org/2000/svg';
-const T = { pol: '<div class="pin"></div><img alt=""><div class="cap" contenteditable spellcheck="false">Başlık</div>',
+let a4m = 0, a4, a4i;   // A4 matrisi: 0 kapalı, 1 yatay, 2 dikey
+const IMG_MAX = (typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches) ? Math.min(CONFIG.IMAGE_MAX, 1000) : CONFIG.IMAGE_MAX;   // telefonda 1000 px yeter
+const T = { pol: '<div class="pin"></div><img alt="" decoding="async"><div class="cap" contenteditable spellcheck="false">Başlık</div>',
   note: '<div class="pin"></div><div contenteditable spellcheck="false">Aklında tut: önemli fikir</div>',
   news: '<div class="pin"></div><h3 contenteditable spellcheck="false">MANŞET BURADA</h3><p contenteditable spellcheck="false">Metni buraya yazın: ders özeti, haber, bilgi... Başlığı ve metni istediğiniz gibi değiştirebilirsiniz.</p>' };
+
+/* ---------- Çağrılınca yüklenen kütüphaneler (açılışı hafifletir) ---------- */
+const LIB_URL = { html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', JSZip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js' }, libP = {};
+function loadLib(name) {
+  if (window[name]) return Promise.resolve();
+  if (!libP[name]) libP[name] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = LIB_URL[name]; s.onload = () => res(); s.onerror = () => { delete libP[name]; s.remove(); rej(new Error(name)); }; document.head.appendChild(s); });
+  return libP[name];
+}
+
+/* ---------- Dokular: SVG filtresi yerine bir kez bitmap'e çevrilir (boşta çalışır) ---------- */
+async function bakeTextures() {
+  const rs = getComputedStyle(document.documentElement), root = document.documentElement;
+  for (let i = 0; i < 20; i++) {
+    const raw = rs.getPropertyValue('--t' + i + '-src').trim(); if (!raw) break;
+    try {
+      const m = raw.match(/^url\(\s*["']?([\s\S]*?)["']?\s*\)$/); if (!m) continue;
+      const im = new Image(); im.src = m[1]; await im.decode();
+      const w = im.naturalWidth || 300, h = im.naturalHeight || 300, c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      const blob = await new Promise(r => c.toBlob(r, 'image/png')); if (!blob) continue;
+      root.style.setProperty('--t' + i, `url("${URL.createObjectURL(blob)}")`);
+      await new Promise(r => setTimeout(r, 30));            // ana iş parçacığını rahat bırak
+    } catch (_) { /* eski SVG dokusu kalır */ }
+  }
+}
+addEventListener('load', () => (window.requestIdleCallback || (f => setTimeout(f, 500)))(() => bakeTextures(), { timeout: 2000 }));
 
 /* ---------- Premium çekirdeği (yetki, ayarlar, panolar) ---------- */
 const ent = createEntitlements({ storage: localStorage, fetchImpl: (...a) => fetch(...a), config: { apiBase: CONFIG.API_BASE, redeemPath: CONFIG.REDEEM_PATH, verifyPath: CONFIG.VERIFY_PATH, publicKey: CONFIG.PUBLIC_KEY, timeout: 12000 } });
@@ -28,7 +56,8 @@ function loadView() {
   if (d && d.k > 0 && isFinite(d.x) && isFinite(d.y)) return d;
   const k = innerWidth < 760 ? .5 : .8; return { k, x: innerWidth / 2 - 2000 * k, y: innerHeight / 2 - 1500 * k };
 }
-const place = () => { if (exporting) return; world.style.transform = `translate(${v.x}px,${v.y}px) scale(${v.k})`; clearTimeout(vt); vt = setTimeout(() => { try { localStorage.setItem(VK, JSON.stringify(v)); } catch (e) {} }, 400); };
+let mvT = 0;
+const place = () => { if (exporting) return; world.style.transform = `translate(${v.x}px,${v.y}px) scale(${v.k})`; view.classList.add('moving'); clearTimeout(mvT); mvT = setTimeout(() => view.classList.remove('moving'), 180); clearTimeout(vt); vt = setTimeout(() => { try { localStorage.setItem(VK, JSON.stringify(v)); } catch (e) {} }, 400); };
 const toWorld = e => ({ x: (e.clientX - v.x) / v.k, y: (e.clientY - v.y) / v.k });
 place();
 
@@ -62,7 +91,7 @@ view.addEventListener('pointerdown', e => {
   if (exporting) return;
   const onBg = e.target === view || e.target === world;
   if (!(onBg && mode !== 'pen' && mode !== 'marker') && e.button !== 1) return;
-  if (onBg) select(null);
+  if (onBg) { select(null); pickOther(null); }
   let sx = e.clientX - v.x, sy = e.clientY - v.y;
   view.classList.add('pan'); view.setPointerCapture(e.pointerId);
   const mv = m => { if (pts.size > 1) { sx = m.clientX - v.x; sy = m.clientY - v.y; return; } v.x = m.clientX - sx; v.y = m.clientY - sy; place(); };
@@ -89,6 +118,9 @@ function select(c) { if (sel) sel.classList.remove('sel'); const same = sel === 
 
 world.addEventListener('pointerdown', e => {
   if (exporting) return;
+  if (e.target.classList.contains('sx')) { e.preventDefault(); e.stopPropagation(); const o = e.target.parentNode; if (o === selOther) selOther = null; o.remove(); save(); return; }
+  const so = e.target.closest('.stamp,.tl');
+  if (so) { pickOther(so); if (so.parentNode === world) return; } else pickOther(null);
   if (e.target.classList.contains('xdel')) return removeCard(e.target.parentNode);
   if (e.target.classList.contains('mvh')) { const k = e.target.parentNode; select(k); return startDrag(e, k); }
   if (e.target.classList.contains('rz')) return startResize(e, e.target.parentNode);
@@ -132,11 +164,13 @@ function startDrag(e, c) {
     if (!started) { if (Math.hypot(m.clientX - e.clientX, m.clientY - e.clientY) < 4) return; begin(m); }
     const q = toWorld(m); let nx = q.x - ox, ny = q.y - oy;
     if (!m.altKey) { for (const other of near) { const edges = [[other.offsetLeft, nx], [other.offsetLeft + other.offsetWidth, nx + c.offsetWidth], [other.offsetTop, ny], [other.offsetTop + other.offsetHeight, ny + c.offsetHeight]]; if (Math.abs(edges[0][0]-edges[0][1]) < CONFIG.SNAP) nx = edges[0][0]; if (Math.abs(edges[1][0]-edges[1][1]) < CONFIG.SNAP) nx = edges[1][0]-c.offsetWidth; if (Math.abs(edges[2][0]-edges[2][1]) < CONFIG.SNAP) ny = edges[2][0]; if (Math.abs(edges[3][0]-edges[3][1]) < CONFIG.SNAP) ny = edges[3][0]-c.offsetHeight; } }
-    c.style.left = nx + 'px'; c.style.top = ny + 'px'; dirty = true; drawThreads();
+    c.style.left = nx + 'px'; c.style.top = ny + 'px'; dirty = true; if (threads.length && threads.some(t => c.contains(t.a) || c.contains(t.b))) drawThreads();
     const h = hostUnder(c); if (h !== hl) { hl && hl.classList.remove('stick-target'); hl = h; hl && hl.classList.add('stick-target'); }
   };
-  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); hl && hl.classList.remove('stick-target'); if (moved) lastDragEnd = performance.now(); if (started) stick(c); };
-  addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  let pend = null, raf = 0;                                    // 120 Hz dokunmatikte olayları kare başına bire indir
+  const mvq = m => { pend = m; if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pend) { const p = pend; pend = null; mv(p); } }); };
+  const up = () => { removeEventListener('pointermove', mvq); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); if (raf) { cancelAnimationFrame(raf); raf = 0; } if (pend) { const p = pend; pend = null; mv(p); } hl && hl.classList.remove('stick-target'); if (moved) lastDragEnd = performance.now(); if (started) stick(c); };
+  addEventListener('pointermove', mvq); addEventListener('pointerup', up); addEventListener('pointercancel', up);
 }
 
 function removeCard(c) {
@@ -178,7 +212,7 @@ function editLabel(t) {
   d.append(i, sb, x); world.appendChild(d); i.focus(); i.select();
 }
 
-let tq = 0;
+let tq = 0; const tlen = new Map();
 function drawThreads() { if (!tq) tq = requestAnimationFrame(() => { tq = 0; drawThreadsNow(); }); }
 function drawThreadsNow() {
   svg.innerHTML = ''; world.querySelectorAll('.threaded').forEach(c=>c.classList.remove('threaded'));
@@ -202,7 +236,8 @@ function drawThreadsNow() {
     at(g, { class: 'lbl', transform: `translate(${q.x} ${q.y}) rotate(${(idx * 37) % 7 - 3})` });
     at(x, { 'text-anchor': 'middle', y: 6, 'font-size': 19, fill: '#1d3557', 'font-family': '"Segoe Print","Bradley Hand","Comic Sans MS",cursive', 'font-weight': 700 });
     x.textContent = t.label; g.appendChild(x); svg.appendChild(g);
-    const w = x.getComputedTextLength() + 30;
+    let tw = tlen.get(t.label); if (tw === undefined) { if (tlen.size > 300) tlen.clear(); tw = x.getComputedTextLength(); tlen.set(t.label, tw); }
+    const w = tw + 30;
     const paper = at(el('rect'), { x: -w / 2, y: -18, width: w, height: 34, rx: 2, fill: '#fffbe6', stroke: '#d8c98a' });
     const tape = at(el('rect'), { x: -24, y: -27, width: 48, height: 15, fill: 'rgba(235,215,140,.8)', transform: 'rotate(-4)' });
     const cx2 = at(el('circle'), { class: 'lx', cx: w / 2, cy: -18, r: 9, fill: '#c1121f', stroke: '#fff', 'stroke-width': 2 });
@@ -282,7 +317,7 @@ $('#addPolaroid').onclick = () => $('#file').click();
 $('#file').onchange = e => {                       // büyük fotoğrafı küçültüp ekle: hız ve kayıt için
   const f = e.target.files[0]; if (!f) return; const u = URL.createObjectURL(f), im = new Image();
   im.onload = () => {
-    const k = Math.min(1, CONFIG.IMAGE_MAX / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+    const k = Math.min(1, IMG_MAX / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
     c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
     URL.revokeObjectURL(u); addCard('pol', c.toDataURL('image/jpeg', CONFIG.IMAGE_QUALITY));
   };
@@ -302,7 +337,7 @@ world.addEventListener('focusin',e=>{const t=e.target.closest&&e.target.closest(
 const fold=s=>s.replace(/İ/g,'i').replace(/I/g,'i').replace(/ı/g,'i').toLowerCase();   // I/İ/ı/i hepsi aynı sayılır
 $('#search').addEventListener('input',e=>{const q=fold(e.target.value.trim());let n=0;world.querySelectorAll('.card .card').forEach(c=>c.classList.remove('search-hide'));world.querySelectorAll(':scope > .card').forEach(c=>{const hide=!!q&&!fold(c.textContent).includes(q);c.classList.toggle('search-hide',hide);if(!hide)n++;});$('#searchCount').textContent=q?n+'/'+world.querySelectorAll(':scope > .card').length+' sonuç':'';});
 $('#search').addEventListener('keydown',e=>{if(e.key==='Escape'){e.target.value='';e.target.dispatchEvent(new Event('input'));e.target.blur();}});
-$('#exportSelected').onclick=async()=>{if(!sel)return toast('Önce bir kart seç.');if(!window.html2canvas)return toast('PNG kütüphanesi yüklenemedi.');const card=sel;card.classList.remove('sel');try{const c=await html2canvas(card,{scale:Math.min(8,Math.max(2,1024/(card.offsetWidth||1))),backgroundColor:null,useCORS:true});const a=document.createElement('a');a.download='mantar-pano-secili-kart.png';a.href=c.toDataURL('image/png');a.click();}catch(e){toast('Seçili kart dışa aktarılamadı.');}finally{if(card.isConnected&&sel===card)card.classList.add('sel');}};
+$('#exportSelected').onclick=async()=>{if(!sel)return toast('Önce bir kart seç.');try{await loadLib('html2canvas');}catch(_){return toast('PNG kütüphanesi yüklenemedi. İnternet bağlantını kontrol et.');}const card=sel;card.classList.remove('sel');try{const c=await html2canvas(card,{scale:Math.min(8,Math.max(2,1024/(card.offsetWidth||1))),backgroundColor:null,useCORS:true});const a=document.createElement('a');a.download='mantar-pano-secili-kart.png';a.href=c.toDataURL('image/png');a.click();}catch(e){toast('Seçili kart dışa aktarılamadı.');}finally{if(card.isConnected&&sel===card)card.classList.add('sel');}};
 // Dosya yöneticisinden fotoğraf veya pano JSON'u sürükleyip bırakılabilir.
 view.addEventListener('dragover',e=>{e.preventDefault();view.classList.add('drop-ready');});view.addEventListener('dragleave',()=>view.classList.remove('drop-ready'));
 view.addEventListener('drop',async e=>{e.preventDefault();view.classList.remove('drop-ready');if(loading)return;for(const f of e.dataTransfer.files){if(f.type.startsWith('image/')){const url=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),k=Math.min(1,CONFIG.IMAGE_MAX/Math.max(im.naturalWidth,im.naturalHeight));c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);addCard('pol',c.toDataURL('image/jpeg',CONFIG.IMAGE_QUALITY));};im.src=url;}else if(f.name.toLowerCase().endsWith('.json')){try{restore(JSON.parse(await f.text()));save();}catch(_){toast('Geçersiz pano JSON dosyası.');}}}});
@@ -331,6 +366,8 @@ Object.assign(T, {
   timer: '<div class="pin"></div><div class="tmt" contenteditable spellcheck="false">Odak</div><div class="tm" title="Süreyi değiştir">25:00</div><div class="tmc"><span class="tmb" data-a="go">▶</span><span class="tmb" data-a="rs">↺</span></div>' });
 $('#addDoc').onclick = () => addCard('doc');
 
+let selOther = null;
+function pickOther(o) { if (selOther && selOther !== o) selOther.classList.remove('sel'); selOther = o; if (o) o.classList.add('sel'); }
 function fixStamp(e) {
   if (!e.classList.contains('stamp') || e.querySelector('.st')) return;
   const t = document.createElement('span'), txt = e.firstChild ? e.firstChild.textContent : '';
@@ -445,10 +482,13 @@ function bounds(fast) {
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 $('#png').onclick = async () => {
-  if (!window.html2canvas || ($('#fmt').value!=='png1' && $('#fmt').value!=='png2' && $('#fmt').value!=='png3' && !window.jspdf?.jsPDF)) return alert('Dışa aktarma kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.');
+  { const f0 = $('#fmt').value, pdf = !['png1', 'png2', 'png3'].includes(f0), need = ['html2canvas'];
+    if (pdf) need.push('jspdf'); else if (+$('#split').value > 1) need.push('JSZip');
+    const b0 = $('#png'), t0 = b0.textContent; b0.disabled = true; b0.textContent = 'Kütüphane yükleniyor…';
+    try { await Promise.all(need.map(loadLib)); } catch (_) { return alert('Dışa aktarma kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.'); } finally { b0.disabled = false; b0.textContent = t0; } }
   const f = $('#fmt').value, n = +$('#split').value, M0 = 6, P = { A4: [297, 210], A3: [420, 297], POSTER: [1000, 700] }[f];
   if(!P && n>1 && !window.JSZip) return alert('Bölünmüş PNG için ZIP kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.');
-  const btn = $('#png'), bt = btn.textContent; btn.disabled = true; exporting = true; $('#bar').inert = true; btn.textContent = 'Hazırlanıyor…'; await new Promise(z => setTimeout(z, 40));
+  const btn = $('#png'), bt = btn.textContent; btn.disabled = true; exporting = true; a4.style.visibility = 'hidden'; $('#bar').inert = true; btn.textContent = 'Hazırlanıyor…'; await new Promise(z => setTimeout(z, 40));
   const oldSel = sel, oldFlt = flt, oldFrom = from, oldQ = $('#search').value;
   if (from) { from.classList.remove('from'); from = null; }
   if (oldQ) { $('#search').value = ''; $('#search').dispatchEvent(new Event('input')); }
@@ -495,7 +535,7 @@ $('#png').onclick = async () => {
     if (oldSel && oldSel.isConnected && !sel) { sel = oldSel; oldSel.classList.add('sel'); syncCat(); }   // z-index'i bump'lamadan geri yükle
     if (oldFrom && oldFrom.isConnected && !from) { from = oldFrom; from.classList.add('from'); }
     if (oldQ) { $('#search').value = oldQ; $('#search').dispatchEvent(new Event('input')); }
-    exporting = false; $('#bar').inert = false; }
+    exporting = false; a4.style.visibility = ''; $('#bar').inert = false; }
 };
 
 /* ---------- Boyut, sınıf, doku ---------- */
@@ -547,7 +587,7 @@ addEventListener('keydown', e => {
 const FIL = b => `brightness(${b}%) contrast(1.05) saturate(.85) sepia(.12)`;
 function syncBr() { const r = $('#bright'), im = sel && sel.querySelector('img'); r.disabled = !im; r.value = im ? (sel.dataset.br || 100) : 100; }
 $('#bright').oninput = e => { const im = sel && sel.querySelector('img'); if (!im) return; sel.dataset.br = e.target.value; im.style.filter = FIL(e.target.value); };
-function syncCat() { syncBr(); syncCardTab(); syncLock();
+function syncCat() { a4Info(); syncBr(); syncCardTab(); syncLock();
   syncRot(); const s = $('#cat'), cc = $('#catColor'); s.disabled = cc.disabled = !sel;
   if (sel) { const k = sel.dataset.cat || 'Diğer'; s.value = k; cc.value = sel.dataset.cc || CATS[k] || '#555555'; }
 }
@@ -843,3 +883,33 @@ function applyTemplate(id) {
   select(null); drawThreads(); save(); toast('Şablon eklendi. Beğenmezsen ↶ ile geri al.');
 }
 premEl.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => { premEl.hidden = true; applyTemplate(b.dataset.tpl); });
+
+/* ---------- A4 matrisi: panoya A4 sayfa ızgarası + seçili kartın A4'e oranı (çağrılınca kurulur) ---------- */
+const A4_NAME = { polaroid: 'Fotoğraf', news: 'Kupür', note: 'Not', postit: 'Post-it', doc: 'Kâğıt', tick: 'Etiket', check: 'Yapılacaklar', tape: 'Bant', timer: 'Zamanlayıcı' };
+a4 = document.createElement('div'); a4.id = 'a4'; a4.hidden = true; world.appendChild(a4);
+a4i = document.createElement('div'); a4i.id = 'a4info'; a4i.hidden = true; a4i.setAttribute('role', 'status'); document.body.appendChild(a4i);
+const a4Dim = () => a4m === 2 ? [CONFIG.A4_H, CONFIG.A4_W] : [CONFIG.A4_W, CONFIG.A4_H];
+function a4Build() {
+  const [w, h] = a4Dim(), cols = Math.ceil(CONFIG.WORLD_W / w), rows = Math.ceil(CONFIG.WORLD_H / h), f = document.createDocumentFragment();
+  a4.style.setProperty('--a4w', w + 'px'); a4.style.setProperty('--a4h', h + 'px'); a4.textContent = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const s = document.createElement('span'); s.textContent = 'A4 · ' + (r * cols + c + 1); s.style.left = c * w + 6 + 'px'; s.style.top = r * h + 6 + 'px'; f.appendChild(s); }
+  a4.appendChild(f);
+}
+function a4Info() {
+  if (!a4m || !a4i) return;
+  const n = x => x.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+  if (sel && sel.isConnected) {
+    const M = wm(sel), k = Math.hypot(M.a, M.b) || 1, m = a4Metrics(sel.offsetWidth * k, sel.offsetHeight * k, CONFIG.A4_W, CONFIG.A4_H);
+    const name = A4_NAME[[...sel.classList].find(c => A4_NAME[c])] || 'Kart';
+    a4i.textContent = `${name} · ${n(m.mmW)}×${n(m.mmH)} mm · A4'e oranı %${n(m.pct)}` + (m.fit >= 2 ? ` · bir A4'e ~${m.fit} tane sığar` : '');
+  } else a4i.textContent = "A4 = 297×210 mm · Bir karta dokun: A4'e oranını göster";
+}
+function a4Set(m) {
+  a4m = m; try { localStorage.setItem('mantar-a4', m); } catch (_) {}
+  const b = $('#a4Btn'); b.classList.toggle('on', !!m); b.textContent = m ? 'A4 matrisi: ' + (m === 1 ? 'yatay' : 'dikey') : 'A4 matrisi';
+  a4.hidden = a4i.hidden = !m; if (m) { a4Build(); a4Info(); } else a4.textContent = ''; lensDirty = true;
+}
+$('#a4Btn').onclick = () => a4Set((a4m + 1) % 3);
+addEventListener('pointerup', () => { if (a4m) a4Info(); });
+addEventListener('input', () => { if (a4m) a4Info(); });
+try { const sv = +localStorage.getItem('mantar-a4'); if (sv === 1 || sv === 2) a4Set(sv); } catch (_) {}

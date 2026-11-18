@@ -13,6 +13,7 @@ Tek sayfalı, tarayıcıda çalışan görsel pano. Derleme adımı yoktur; proj
 - Kartları taşıma, döndürme, büyütme, yapıştırma; 8 px hizalama yakalaması (Alt ile geçici kapatılır).
 - İp bağlantısı: dönme/büyütme matrisine göre hesaplanan raptiye koordinatı ve raptiye başında ip dolama görünümü.
 - Kalem, işaretleyici, silgi; kalem basıncı ve coalesced pointer events.
+- **A4 matrisi** (ücretsiz): Çiz sekmesinden panoya A4 sayfa ızgarası (yatay/dikey) bindirir; seçili kartın mm boyutunu, A4'e oranını ve bir A4'e kaç tanesinin sığdığını gösterir (96 dpi). Dışa aktarmada görünmez.
 - Sınıf etiketi ve filtre, öne/arkaya gönderme, arama (Ctrl+F), çoğaltma (Ctrl+D).
 - Klavye ile 1 px / Shift+ok ile 10 px taşıma; Ctrl+Z geri al, Ctrl+Y veya Ctrl+Shift+Z yinele.
 - Dosya yöneticisinden görsel veya JSON yedeği sürükleyip bırakma.

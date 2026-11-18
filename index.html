@@ -37,6 +37,7 @@
     <div class="grp">
       <button id="lensBtn" title="Parmağın / imlecin altını büyütür">Büyüteç</button>
       <button id="fitBtn" title="Tüm kartları ekrana sığdır">⤢ Hepsini göster</button>
+      <button id="a4Btn" title="Panoya A4 sayfa ızgarası bindirir; seçili kartın A4'ün ne kadarını kapladığını gösterir">A4 matrisi</button>
       <button id="legendBtn" title="Sınıf listesini aç/kapat">Sınıflar</button>
       <button id="undoBtn" title="Geri al (Ctrl+Z)">↶ Geri al</button><button id="redoBtn" title="Yinele (Ctrl+Y)">↷ Yinele</button>
       <button id="helpBtn" title="Nasıl kullanılır?">? Yardım</button>
@@ -110,6 +111,8 @@
     <p><b>＋ Ekle</b> sekmesinden fotoğraf, kupür (1 ya da 2 kolonlu), not, küçük sarı post-it, kâğıt ya da zaman çizelgesi ekle. Post-it kartın üstüne bırakılınca <b>yapışır</b> ve kartla birlikte taşınır, döner, büyür; üstteki koyu şeritten ya da ✥ tutamacından tutup çekersen kopar. Yazıya dokunup değiştir. Kartı seçince köşelerde tutamaçlar çıkar: <b>✕</b> sil · <b>sarı nokta</b> boyut · <b>↻</b> serbest açı · <b>✥</b> taşı. <b>Kart</b> sekmesinde etiket, açı ve fotoğraf parlaklığı var.</p>
     <h3>İp, çizim, mühür</h3>
     <p><b>İp</b> modunda sırayla iki karta dokun; ipe dokunup etiket yaz, etiketi sürükleyerek kaydır. <b>Kalem / İşaretleyici / Silgi</b> ile pano üzerine çiz. <b>Mühür</b> modunda kutuya yazdığın yazıyı karta ya da panoya bas.</p>
+    <h3>A4 matrisi</h3>
+    <p><b>Çiz → A4 matrisi</b> düğmesi panoya A4 sayfa ızgarası bindirir (yatay → dikey → kapalı). Bir kart seçince üstte milimetre cinsinden boyutu, <b>A4'e oranı</b> ve bir A4'e kaç tanesinin sığacağı yazar. Ölçü ekrandaki gerçek boyuttur (96 dpi); kartı büyütünce de güncellenir. Izgara dışa aktarılan görüntüde görünmez.</p>
     <h3>Kısayollar ve ekleme</h3><p><b>Ctrl+Z / Ctrl+Y:</b> geri al / yinele · <b>Ctrl+D:</b> çoğalt · <b>Ctrl+F:</b> ara · <b>Oklar:</b> kartı 1 px, Shift+ok 10 px taşı. Kartları hizalamak için 8 px yakınlıkta otomatik yakalama olur; Alt basılıyken kapatılır. Dosyaları doğrudan panoya sürükleyip bırakabilirsin. Seçili kartı ayrı PNG indirebilirsin.</p><h3>Premium</h3>
     <p><b>✦ Pro</b> sekmesinden Mikro-Klima'dan aldığın kodu gir: temalar, raptiyeler, yeni ip stilleri, yapılacaklar kartı, kart kilidi, ek panolar ve şablonlar açılır. Mevcut tüm özellikler ücretsiz kalır.</p><h3>Kaydetme</h3>
     <p>Pano bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak ya da yedek için <b>Kaydet</b> düğmesiyle (Dosya paneli) dosya indir, <b>Aç</b> ile geri yükle.</p>
@@ -148,9 +151,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
