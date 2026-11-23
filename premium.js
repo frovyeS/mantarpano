@@ -45,6 +45,12 @@ export function sanitizeSettings(s) {
 export function normalizeCode(s) {
   return String(s ?? '').normalize('NFKC').replace(/[\u2010-\u2015\u2212]/g, '-').replace(/İ/g, 'I').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 64);
 }
+// Mağaza / Nexus Pass "Mantar Pano'da aç" bağlantısı: <pano>/#kod=XXXX-XXXX-XXXXX (# sonrası sunucuya gitmez). Yoksa ya da bozuksa null.
+export function codeFromHash(hash) {
+  const m = /(?:^#|&)kod=([^&]*)/.exec(String(hash ?? '')); if (!m) return null;
+  let v; try { v = decodeURIComponent(m[1]); } catch (_) { return null; }
+  const c = normalizeCode(v); return c.length >= 6 && c.length <= 64 && c === v.trim().toUpperCase() ? c : null;
+}
 export function planFrom(x) {
   const t = String(x ?? '').toLowerCase().replace(/ı/g, 'i').replace(/[^a-z]/g, '');
   if (/unlimited|sinirsiz|ultra|infinite|^max$/.test(t)) return 'unlimited';

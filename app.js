@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { cardPin, pointOnQuadratic, a4Metrics } from './geometry.js';
 import { readBoard, persistBoard, deleteBoard } from './persist.js';
-import { PLANS, THEMES, PINS, THREAD_STYLES, sanitizeThreadStyle, sanitizeSettings, createEntitlements, timeLeftText, loadBoards, saveBoards, newBoard, boardUsable, cleanName, rank } from './premium.js';
+import { codeFromHash, PLANS, THEMES, PINS, THREAD_STYLES, sanitizeThreadStyle, sanitizeSettings, createEntitlements, timeLeftText, loadBoards, saveBoards, newBoard, boardUsable, cleanName, rank } from './premium.js';
 'use strict';
 const $ = s => document.querySelector(s);
 const view = $('#view'), world = $('#world'), svg = $('#strings'), cv = $('#draw'), ctx = cv.getContext('2d');
@@ -733,6 +733,12 @@ $('#codeBtn').onclick = async () => {
   if (r.ok) { m.className = 'okm'; m.textContent = PLANS[r.plan].name + ' etkin! ' + timeLeftText(r.exp - Date.now()) + '.'; $('#codeIn').value = ''; } else { m.className = 'errm'; m.textContent = r.error; }
 };
 $('#codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('#codeBtn').click(); });
+/* Bağlantıyla gelen kod (#kod=...): adres çubuğundan hemen silinir, pano yüklenince kendiliğinden etkinleştirilir (elle yapıştırmaya gerek kalmaz). */
+if (/(?:^#|&)kod=/.test(location.hash)) {
+  const kod = codeFromHash(location.hash); try { window.history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  if (kod) { let n = 0; const go = () => { if (loading && n++ < 150) return setTimeout(go, 100); $('#codeIn').value = kod; openPrem(); $('#codeBtn').click(); }; go(); }
+  else toast('Kod bağlantısı bozuk. Kodu Premium penceresine elle yapıştırabilirsin.');
+}
 
 /* ---------- Masa lambası (Sınırsız) ---------- */
 let lampPref = false; try { lampPref = localStorage.getItem('mantar-lamp') === '1'; } catch (_) {}

@@ -93,3 +93,15 @@ test('ayar ve ip stili doğrulama', () => {
   assert.equal(THEMES.filter(t => t.min === 'pro').length, 5); assert.equal(PLANS.pro.crystals, 120); assert.equal(PLANS.unlimited.crystals, 250);
 });
 test('süre metni', () => { assert.equal(timeLeftText(0), 'süresi doldu'); assert.equal(timeLeftText(5 * 36e5), '5 saat kaldı'); assert.equal(timeLeftText(2.2 * DAY), '3 gün kaldı'); });
+
+test('codeFromHash: #kod=... okunur, bozuk ya da başka değerler reddedilir', async () => {
+  const { codeFromHash } = await import('../premium.js');
+  assert.equal(codeFromHash('#kod=ABCD-1234-EFGH5'), 'ABCD-1234-EFGH5');
+  assert.equal(codeFromHash('#x=1&kod=abcd-1234-efgh5'), 'ABCD-1234-EFGH5');   // küçük harf büyütülür
+  assert.equal(codeFromHash('#kod=ABCD%2D1234%2DEFGH5'), 'ABCD-1234-EFGH5');
+  assert.equal(codeFromHash('#kod=kisa'), null);
+  assert.equal(codeFromHash('#kod=<script>'), null);
+  assert.equal(codeFromHash('#kod=%E0%A4%A'), null);
+  assert.equal(codeFromHash(''), null);
+  assert.equal(codeFromHash('#baska=ABCD-1234'), null);
+});
