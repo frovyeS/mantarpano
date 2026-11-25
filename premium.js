@@ -104,7 +104,7 @@ export function timeLeftText(ms) {
 /* ---------- Yetki durumu ---------- */
 const EK = 'mantar-ent', DK = 'mantar-device';
 export function createEntitlements({ storage, fetchImpl, now = Date.now, config = {}, subtle } = {}) {
-  let st = null; const subs = new Set();
+  let st = null, accountPlan = 'free', accountExp = 0; const subs = new Set();
   const emit = r => subs.forEach(f => { try { f(r); } catch (_) {} });
   const eff = () => Math.max(now(), st?.seen || 0);
   const put = () => { try { st ? storage.setItem(EK, JSON.stringify(st)) : storage.removeItem(EK); } catch (_) {} };
@@ -120,6 +120,24 @@ export function createEntitlements({ storage, fetchImpl, now = Date.now, config 
       return { status: r.status, json: await r.json().catch(() => null) };
     } finally { t && clearTimeout(t); }
   }
+  async function syncAccountSubscription() {
+    try {
+      await globalThis.KR?.ready?.();
+      const pair = globalThis.KR?.creds?.(); if (!pair) return;
+      const r = await fetch('https://mikroklimakontrolmerkezi.forevye.workers.dev/api/subscriptions/state', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pair.id + '.' + pair.token },
+        body: '{}', cache: 'no-store'
+      });
+      if (!r.ok) return;
+      const j = await r.json();
+      const rows = (j.subscriptions || []).filter(x => x.app === APP_ID && x.active);
+      const rankTier = { pro: 1, unlimited: 2 };
+      rows.sort((a,b) => (rankTier[b.tier]||0)-(rankTier[a.tier]||0) || b.expires_at-a.expires_at);
+      accountPlan = rows[0]?.tier || 'free';
+      accountExp = rows[0] ? rows[0].expires_at * 1000 : 0;
+      emit('account-sync');
+    } catch (_) {}
+  }
   const api = {
     async init() {
       let s = null; try { s = JSON.parse(storage.getItem(EK)); } catch (_) {}
@@ -127,12 +145,12 @@ export function createEntitlements({ storage, fetchImpl, now = Date.now, config 
         if (config.publicKey) { const p = await verifyToken(s.token, config.publicKey, device(), subtle); s = p ? { ...s, ...p } : null; }
       } else s = null;
       st = s; if (st) { st.seen = Math.max(st.seen || 0, now()); put(); this.tick(true); }
-      emit('init'); return this.plan();
+      await syncAccountSubscription(); emit('init'); return this.plan();
     },
-    plan() { return st && st.exp > eff() ? st.plan : 'free'; },
+    plan() { if (accountExp > eff()) return accountPlan; return st && st.exp > eff() ? st.plan : 'free'; },
     has(min) { return rank(this.plan()) >= rank(min); },
     limit(k) { return PLANS[this.plan()][k]; },
-    left() { return st && st.exp > eff() ? st.exp - eff() : 0; },
+    left() { if (accountExp > eff()) return accountExp - eff(); return st && st.exp > eff() ? st.exp - eff() : 0; },
     device,
     onChange(f) { subs.add(f); return () => subs.delete(f); },
     tick(quiet) {
@@ -140,6 +158,7 @@ export function createEntitlements({ storage, fetchImpl, now = Date.now, config 
       if (st.exp <= eff()) { st = null; put(); if (!quiet) emit('expired'); }
     },
     clear() { st = null; put(); emit('clear'); },
+    syncAccountSubscription,
     async redeem(raw) {
       const code = normalizeCode(raw);
       if (code.length < 6) return { ok: false, error: 'Kod çok kısa görünüyor.' };
